@@ -1,6 +1,7 @@
 # WeatherKit-OpenAPI
 OpenAPI spec for Apple's WeatherKit
 
-Based on the (currently Beta) spec found here: https://developer.apple.com/documentation/weatherkitrestapi
-
-500k requests/month for free (pay for more)
+## Resources
+- The (currently-in-Beta) spec: https://developer.apple.com/documentation/weatherkitrestapi
+- Pricing details: https://developer.apple.com/weatherkit/get-started
+- WWDC walkthrough video: https://developer.apple.com/videos/play/wwdc2022/10003/
