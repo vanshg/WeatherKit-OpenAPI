@@ -1,0 +1,796 @@
+openapi: 3.0.3
+info:
+  title: Apple WeatherKit REST API
+  description: Obtain historical, current, and predictive weather for your app or service.
+  version: 1.0.0
+servers:
+  - url: 'https://weatherkit.apple.com/api/v1'
+paths:
+  /availability/{latitude}/{longitude}:
+    get:
+      description: 'Determine the data sets available for the specified location.'
+      tags:
+        - Availability
+      parameters:
+        - name: latitude
+          description: 'The latitude of the desired location.'
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+        - name: longitude
+          description: 'The longitude of the desired location.'
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+        - name: country
+          description: 'The ISO Alpha-2 country code for the requested location. This parameter is necessary for air quality and weather alerts.'
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 2
+      responses:
+        200:
+          description: 'The request is successful. The data sets are in the response.'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  # TODO: convert to enum
+                  type: string
+        400:
+          description: 'The server is unable to process the request due to an invalid parameter value.'
+        401:
+          description: 'The request isn’t authorized or doesn’t include the correct authentication information.'
+
+  /weather/{language}/{latitude}/{longitude}:
+    get:
+      description: 'Obtain weather data for the specified location.'
+      tags:
+        - Weather
+      parameters:
+        - name: latitude
+          description: 'The latitude of the desired location.'
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+        - name: longitude
+          description: 'The longitude of the desired location.'
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+        - name: language
+          description: 'The language tag to use for localizing responses.'
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: timezone
+          description: 'The time to end the daily forecast. If this parameter is absent, daily forecasts run for 10 days.'
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: countryCode
+          description: 'The ISO Alpha-2 country code for the requested location. This parameter is necessary for air quality and weather alerts.'
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 2
+        - name: currentAsOf
+          description: 'The time to obtain current conditions. Defaults to now.'
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: dailyStart
+          description: 'The time to start the daily forecast. If this parameter is absent, daily forecasts start on the current day.'
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: dailyEnd
+          description: 'The time to end the daily forecast. If this parameter is absent, daily forecasts run for 10 days.'
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: hourlyStart
+          description: 'The time to start the hourly forecast. If this parameter is absent, hourly forecasts start on the current hour.'
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: hourlyEnd
+          description: 'The time to end the hourly forecast. If this parameter is absent, hourly forecasts run 24 hours or the length of the daily forecast, whichever is longer.'
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: dataSets
+          description: 'A comma-delimited list of data sets to include in the response.'
+          in: query
+          required: false
+          schema:
+            # TODO: csv enum
+            type: string
+      responses:
+        200:
+          description: 'The request is successful. The weather alert is in the response.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Weather'
+        400:
+          description: 'The server is unable to process the request due to an invalid parameter value.'
+        401:
+          description: 'The request isn’t authorized or doesn’t include the correct authentication information.'
+
+  /weatherAlert/{language}/{id}:
+    get:
+      description: 'Receive an active weather alert.'
+      tags:
+        - Weather Alerts
+      parameters:
+        - name: id
+          description: 'The unique identifier for the weather alert.'
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: language
+          description: 'The language tag to use for localizing responses.'
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'The request is successful. The weather alert is in the response.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeatherAlert'
+
+components:
+  schemas:
+    Weather:
+      description: 'The collection of all requested weather data.'
+      type: object
+      properties:
+        currentWeather:
+          $ref: '#/components/schemas/CurrentWeather'
+        forecastDaily:
+          $ref: '#/components/schemas/DailyForecast'
+        forecastHourly:
+          $ref: '#/components/schemas/HourlyForecast'
+        forecastNextHour:
+          $ref: '#/components/schemas/NextHourForecast'
+        weatherAlerts:
+          $ref: '#/components/schemas/WeatherAlertCollection'
+
+    ProductData:
+      description: 'A base type for all weather data.'
+      type: object
+      required:
+        - metadata
+      properties:
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    Metadata:
+      description: 'Descriptive information about the weather data.'
+      type: object
+      required:
+        - expireTime
+        - latitude
+        - longitude
+        - readTime
+        - version
+      properties:
+        attributionURL:
+          # TODO: convert to URL
+          description: 'The URL of the legal attribution for the data source.'
+          type: string
+        expireTime:
+          description: 'The time when the weather data is no longer valid.'
+          type: string
+          format: date-time
+        language:
+          description: 'The ISO language code for localizable fields.'
+          type: string
+        latitude:
+          description: 'The latitude of the relevant location.'
+          type: number
+        longitude:
+          description: 'The longitude of the relevant location.'
+          type: number
+        providerLogo:
+          # TODO: convert to URL
+          description: 'The URL of a logo for the data provider.'
+          type: string
+        providerName:
+          description: 'The name of the data provider.'
+          type: string
+        readTime:
+          description: 'The time the weather data was procured.'
+          type: string
+          format: date-time
+        reportedTime:
+          description: 'The time the provider reported the weather data.'
+          type: string
+          format: date-time
+        temporarilyUnavailable:
+          description: 'The weather data is temporarily unavailable from the provider.'
+          type: boolean
+        units:
+          # TODO: convert to enum
+          description: 'The system of units that the weather data is reported in. This is set to metric.'
+          type: string
+        version:
+          description: 'The data format version.'
+          type: integer
+
+    CurrentWeather:
+      description: 'The current weather conditions for the specified location.'
+      allOf:
+        - $ref: '#/components/schemas/ProductData'
+        - type: object
+          required:
+            - asOf
+            - conditionCode
+            - humidity
+            - precipitationIntensity
+            - pressure
+            - pressureTrend
+            - temperature
+            - temperatureApparent
+            - temperatureDewPoint
+            - uvIndex
+            - visibility
+            - windSpeed
+          properties:
+            asOf:
+              description: 'The date and time.'
+              type: string
+              format: date-time
+            cloudCover:
+              description: 'The percentage of the sky covered with clouds during the period, from 0 to 1.'
+              type: number
+            conditionCode:
+              # TODO: convert to enum
+              description: 'An enumeration value indicating the condition at the time.'
+              type: string
+            daylight:
+              description: 'A Boolean value indicating whether there is daylight.'
+              type: boolean
+            humidity:
+              description: 'The relative humidity, from 0 to 1.'
+              type: number
+            precipitationIntensity:
+              description: 'The precipitation intensity in millimeters per hour.'
+              type: number
+            pressure:
+              description: 'The sea level air pressure in millibars.'
+              type: number
+            pressureTrend:
+              # TODO: convert to enum
+              description: 'The direction of change of the sea level air pressure.'
+              type: string
+            temperature:
+              description: 'The current temperature.'
+              type: number
+            temperatureApparent:
+              description: 'The feels-like temperature when factoring wind and humidity.'
+              type: number
+            temperatureDewPoint:
+              description: 'The temperature at which relative humidity is 100%.'
+              type: number
+            uvIndex:
+              description: 'The level of ultraviolet radiation.'
+              type: integer
+            visibility:
+              description: 'The distance at which terrain is visible.'
+              type: number
+            windDirection:
+              description: 'The direction of the wind.'
+              type: integer
+            windGust:
+              description: 'The maximum wind gust speed.'
+              type: number
+            windSpeed:
+              description: 'The wind speed.'
+              type: number
+
+    ForecastPeriodSummary:
+      description: 'The summary for a specified period in the minute forecast.'
+      type: object
+      required:
+        - condition
+        - precipitationChance
+        - precipitationIntensity
+        - startTime
+      properties:
+        condition:
+          # TODO: convert to enum
+          description: 'The type of precipitation forecasted.'
+          type: string
+        endTime:
+          description: 'The end time of the forecast.'
+          type: string
+          format: date-time
+        precipitationChance:
+          description: 'The probability of precipitation during this period.'
+          type: number
+        precipitationIntensity:
+          description: 'The precipitation intensity in millimeters per hour.'
+          type: number
+        startTime:
+          description: 'The start time of the forecast.'
+          type: string
+          format: date-time
+
+    ForecastMinute:
+      description: 'The precipitation forecast for a specified minute.'
+      type: object
+      required:
+        - precipitationChance
+        - precipitationIntensity
+        - startTime
+      properties:
+        precipitationChance:
+          description: 'The probability of precipitation during this minute.'
+          type: number
+        precipitationIntensity:
+          description: 'The precipitation intensity in millimeters per hour.'
+          type: number
+        startTime:
+          description: 'The start time of the minute.'
+          type: string
+          format: date-time
+
+    HourWeatherConditions:
+      description: 'The historical or forecasted weather conditions for a specified hour.'
+      type: object
+      required:
+        - cloudCover
+        - conditionCode
+        - humidity
+        - precipitationChance
+        - precipitationType
+        - pressure
+        - temperature
+        - temperatureApparent
+        - uvIndex
+        - visibility
+        - windSpeed
+      properties:
+        cloudCover:
+          description: 'The percentage of the sky covered with clouds during the period, from 0 to 1.'
+          type: number
+        conditionCode:
+          # TODO: convert to enum
+          description: 'An enumeration value indicating the condition at the time.'
+          type: string
+        daylight:
+          description: 'Indicates whether the hour starts during the day or night.'
+          type: boolean
+        forecastStart:
+          description: 'The starting date and time of the forecast.'
+          type: string
+          format: date-time
+        humidity:
+          description: 'The relative humidity at the start of the hour, from 0 to 1.'
+          type: number
+        precipitationChance:
+          description: 'The chance of precipitation forecasted to occur during the hour.'
+          type: number
+        precipitationType:
+          # TODO: convert to enum
+          description: 'The type of precipitation forecasted to occur during the period.'
+          type: string
+        pressure:
+          description: 'The sea level air pressure in millibars.'
+          type: number
+        pressureTrend:
+          # TODO: convert to enum
+          description: 'The direction of change of the sea level air pressure.'
+          type: string
+        snowfallIntensity:
+          description: 'The rate at which snow crystals are falling in millimeters per hour.'
+          type: number
+        temperature:
+          description: 'The temperature at the start of the hour.'
+          type: number
+        temperatureApparent:
+          description: 'The feels-like temperature when considering wind and humidity, at the start of the hour.'
+          type: number
+        temperatureDewPoint:
+          description: 'The temperature at which relative humidity is 100% at the start of the hour.'
+          type: number
+        uvIndex:
+          description: 'The level of ultraviolet radiation at the start of the hour.'
+          type: integer
+        visibility:
+          description: 'The distance at which terrain is visible at the start of the hour.'
+          type: number
+        windDirection:
+          description: 'The direction of the wind at the start of the hour.'
+          type: integer
+        windGust:
+          description: 'The maximum wind gust speed during the hour.'
+          type: number
+        windSpeed:
+          description: 'The wind speed at the start of the hour.'
+          type: number
+        precipitationAmount:
+          description: 'The amount of precipitation forecasted to occur during period, in millimeters.'
+          type: number
+
+    HourlyForecast:
+      description: 'A collection of hour forecasts for a specified range of hours.'
+      allOf:
+        - $ref: '#/components/schemas/ProductData'
+        - type: object
+          required:
+            - hours
+          properties:
+            hours:
+              description: 'An array of hourly forecasts.'
+              type: array
+              items:
+                $ref: '#/components/schemas/HourWeatherConditions'
+
+    NextHourForecast:
+      description: 'A minute-by-minute forecast for the next hour.'
+      allOf:
+        - $ref: '#/components/schemas/ProductData'
+        - type: object
+          required:
+            - minutes
+            - summary
+          properties:
+            forecastEnd:
+              description: 'The time the forecast ends.'
+              type: string
+              format: date-time
+            forecastStart:
+              description: 'The time the forecast starts.'
+              type: string
+              format: date-time
+            minutes:
+              description: 'An array of the forecast minutes.'
+              type: array
+              items:
+                $ref: '#/components/schemas/ForecastMinute'
+            summary:
+              description: 'An array of the forecast summaries.'
+              type: array
+              items:
+                $ref: '#/components/schemas/ForecastPeriodSummary'
+
+    DayWeatherConditions:
+      description: 'The historical or forecasted weather conditions for a specified day.'
+      type: object
+      required:
+        - conditionCode
+        - forecastEnd
+        - forecastStart
+        - maxUvIndex
+        - moonPhase
+        - precipitationAmount
+        - precipitationChance
+        - precipitationType
+        - snowfallAmount
+        - temperatureMax
+        - temperatureMin
+      properties:
+        conditionCode:
+          # TODO: convert to enum
+          description: 'An enumeration value indicating the condition at the time.'
+          type: string
+        daytimeForecast:
+          allOf:
+            - description: 'The day part forecast between 7 AM and 7 PM for the day.'
+            - $ref: '#/components/schemas/DayPartForecast'
+        forecastEnd:
+          description: 'The ending date and time of the day.'
+          type: string
+          format: date-time
+        forecastStart:
+          description: 'The starting date and time of the day.'
+          type: string
+          format: date-time
+        maxUvIndex:
+          description: 'The maximum ultraviolet index value during the day.'
+          type: integer
+        moonPhase:
+          # TODO: convert to enum
+          description: 'The phase of the moon on the specified day.'
+          type: string
+        moonrise:
+          description: 'The time of moonrise on the specified day.'
+          type: string
+          format: date-time
+        moonset:
+          description: 'The time of moonset on the specified day.'
+          type: string
+          format: date-time
+        overnightForecast:
+          allOf:
+            - description: 'The day part forecast between 7 PM and 7 AM for the overnight.'
+            - $ref: '#/components/schemas/DayPartForecast'
+        precipitationAmount:
+          description: 'The amount of precipitation forecasted to occur during the day, in millimeters.'
+          type: number
+        precipitationChance:
+          description: 'The chance of precipitation forecasted to occur during the day.'
+          type: number
+        precipitationType:
+          # TODO: convert to enum
+          description: 'The type of precipitation forecasted to occur during the day.'
+          type: string
+        snowfallAmount:
+          description: 'The depth of snow as ice crystals forecasted to occur during the day.'
+          type: number
+        solarMidnight:
+          description: 'The time when the sun is at its lowest in the sky.'
+          type: string
+          format: date-time
+        solarNoon:
+          description: 'The time when the sun is at its highest in the sky.'
+          type: string
+          format: date-time
+        sunrise:
+          description: 'The time when the top edge of the sun reaches the horizon in the morning.'
+          type: string
+          format: date-time
+        sunriseAstronomical:
+          description: 'The time when the sun is 18 degrees below the horizon in the morning.'
+          type: string
+          format: date-time
+        sunriseCivil:
+          description: 'The time when the sun is 6 degrees below the horizon in the morning.'
+          type: string
+          format: date-time
+        sunriseNautical:
+          description: 'The time when the sun is 12 degrees below the horizon in the morning.'
+          type: string
+          format: date-time
+        sunset:
+          description: 'The time when the top edge of the sun reaches the horizon in the evening.'
+          type: string
+          format: date-time
+        sunsetAstronomical:
+          description: 'The time when the sun is 18 degrees below the horizon in the evening.'
+          type: string
+          format: date-time
+        sunsetCivil:
+          description: 'The time when the sun is 6 degrees below the horizon in the evening.'
+          type: string
+          format: date-time
+        sunsetNautical:
+          description: 'The time when the sun is 12 degrees below the horizon in the evening.'
+          type: string
+          format: date-time
+        temperatureMax:
+          description: 'The maximum temperature forecasted to occur during the day.'
+          type: number
+        temperatureMin:
+          description: 'The minimum temperature forecasted to occur during the day.'
+          type: number
+
+    DayPartForecast:
+      description: 'A summary forecast for a daytime or overnight period.'
+      type: object
+      required:
+        - cloudCover
+        - conditionCode
+        - forecastEnd
+        - forecastStart
+        - humidity
+        - precipitationAmount
+        - precipitationChance
+        - precipitationType
+        - snowfallAmount
+        - windSpeed
+      properties:
+        cloudCover:
+          description: 'The percentage of the sky covered with clouds during the period, from 0 to 1.'
+          type: number
+        conditionCode:
+          # TODO: convert to enum
+          description: 'An enumeration value indicating the condition at the time.'
+          type: string
+        forecastEnd:
+          description: 'The ending date and time of the forecast.'
+          type: string
+          format: date-time
+        forecastStart:
+          description: 'The starting date and time of the forecast.'
+          type: string
+          format: date-time
+        humidity:
+          description: 'The relative humidity during the period, from 0 to 1.'
+          type: number
+        precipitationAmount:
+          description: 'The amount of precipitation forecasted to occur during the period, in millimeters.'
+          type: number
+        precipitationChance:
+          description: 'The chance of precipitation forecasted to occur during the period.'
+          type: number
+        precipitationType:
+          # TODO: convert to enum
+          description: 'The type of precipitation forecasted to occur during the period.'
+          type: string
+        snowfallAmount:
+          description: 'The depth of snow as ice crystals forecasted to occur during the period.'
+          type: number
+        windDirection:
+          description: 'The direction the wind is forecasted to come from during the period.'
+          type: integer
+        windSpeed:
+          description: 'The average speed the wind is forecasted to be during the period.'
+          type: number
+
+    DailyForecast:
+      description: 'A collection of day forecasts for a specified range of days.'
+      allOf:
+        - $ref: '#/components/schemas/ProductData'
+        - type: object
+          required:
+            - days
+          properties:
+            days:
+              description: 'An array of the day forecast weather conditions.'
+              type: array
+              items:
+                $ref: '#/components/schemas/DayWeatherConditions'
+            learnMoreURL:
+              description: 'A URL that provides more information about the forecast.'
+              type: string
+              format: uri
+
+    WeatherAlertSummary:
+      description: 'Detailed information about the weather alert.'
+      type: object
+      required:
+        - certainty
+        - countryCode
+        - effectiveTime
+        - expireTime
+        - id
+        - issuedTime
+        - responses
+        - severity
+        - source
+      properties:
+        areaId:
+          description: 'An official designation of the affected area.'
+          type: string
+        areaName:
+          description: 'A human-readable name of the affected area.'
+          type: string
+        certainty:
+          # TODO: convert to enum
+          description: 'How likely the event is to occur.'
+          type: string
+        countryCode:
+          description: 'The ISO code of the reporting country.'
+          type: string
+        description:
+          description: 'A human-readable description of the event.'
+          type: string
+        detailsUrl:
+          description: 'The URL to a page containing detailed information about the event.'
+          type: string
+          format: uri
+        effectiveTime:
+          description: 'The time the event went into effect.'
+          type: string
+          format: date-time
+        eventEndTime:
+          description: 'The time when the underlying weather event is projected to end.'
+          type: string
+          format: date-time
+        eventOnsetTime:
+          description: 'The time when the underlying weather event is projected to start.'
+          type: string
+          format: date-time
+        expireTime:
+          description: 'The time when the event expires.'
+          type: string
+          format: date-time
+        id:
+          description: 'A unique identifier of the event.'
+          type: string
+          format: uuid
+        issuedTime:
+          description: 'The time that event was issued by the reporting agency.'
+          type: string
+          format: date-time
+        responses:
+          description: 'An array of recommended actions from the reporting agency.'
+          type: array
+          items:
+            # TODO: convert to enum
+            type: string
+        severity:
+          # TODO: convert to enum
+          description: 'The level of danger to life and property.'
+          type: string
+        source:
+          description: 'The name of the reporting agency.'
+          type: string
+        urgency:
+          # TODO: convert to enum
+          description: 'An indication of urgency of action from the reporting agency.'
+          type: string
+
+    WeatherAlert:
+      description: 'An official message indicating severe weather from a reporting agency.'
+      allOf:
+        - $ref: '#/components/schemas/WeatherAlertSummary'
+        - type: object
+          required:
+            - area
+            - messages
+          properties:
+            area:
+              # TODO: convert to Geometry
+              description: 'An object defining the geographic region the weather alert applies to.'
+              type: object
+            messages:
+              description: 'An array of official text messages describing a severe weather event from the agency.'
+              type: array
+              items:
+                $ref: '#/components/schemas/EventText'
+
+    WeatherAlertCollection:
+      description: 'A collection of severe weather alerts for a specified location.'
+      allOf:
+        - $ref: '#/components/schemas/ProductData'
+        - type: object
+          required:
+            - alerts
+          properties:
+            alerts:
+              description: An array of weather alert summaries.
+              type: array
+              items:
+                $ref: '#/components/schemas/WeatherAlertSummary'
+            detailsUrl:
+              description: 'A URL that provides more information about the alerts.'
+              type: string
+              format: uri
+
+    EventText:
+      description: 'The official text describing a severe weather event from the agency.'
+      type: object
+      properties:
+        language:
+          description: 'The ISO language code that the text is in.'
+          type: string
+        text:
+          description: 'The severe weather event text.'
+          type: string
